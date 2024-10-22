@@ -1,34 +1,44 @@
-const messi = {
-    nombre: "Messi", 
-    edad: 37,
-};
-
-const edadesCercanas = [36, 38, 35, 39];
+let messi;
 let intentosFallidos = [];
 let puntos = 100;
 const respuestasEnviadas = [];
-let intentos = 0;
+let historial = JSON.parse(localStorage.getItem('historial')) || [];
 
 const formulario = document.getElementById('formulario');
-const mensajeResultado = document.getElementById('mensajeResultado')
+const mensajeResultado = document.getElementById('mensajeResultado');
 
-formulario.addEventListener('submit', (e) => {
-    e.preventDefault();
-    agregarRespuestas();
-    contadorPuntos;
-    
+document.addEventListener('DOMContentLoaded', async () => {
+    await cargarDatos();
 });
 
-function agregarRespuestas() {
+async function cargarDatos() {
+    try {
+        const response = await fetch('datos.json');
+        const data = await response.json();
+        messi = data.messi;
+        edadesCercanas = data.edadesCercanas;
+    } catch (error) {
+        console.error('Error al cargar los datos:', error);
+    }
+}
+
+formulario.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await agregarRespuestas();
+    mostrarRespuestas();
+});
+
+async function agregarRespuestas() {
     const edad = parseInt(document.getElementById('edad').value); 
-   
+
     respuestasEnviadas.push(edad);
     localStorage.setItem('respuestas', JSON.stringify(respuestasEnviadas));
     
-    contadorPuntos(edad); 
-    
+    await contadorPuntos(edad);
     formulario.reset();
 }
+
+const fechaHora = new Date().toLocaleString();
 
 const respuestas = document.getElementById('respuestas');
 const verRespuestas = document.getElementById('verRespuestas');
@@ -37,6 +47,30 @@ verRespuestas.addEventListener('click', () => {
     mostrarRespuestas();
 });
 
+function respuestaIncorrecta() {
+    Swal.fire({
+        icon: "error",
+        title: "Respuesta incorrecta",
+        text: "La edad ingresada no es la edad de Messi",
+    });
+}
+
+function edadInvalida() {
+    Swal.fire({
+        icon: "error",
+        title: "Edad inválida",
+        text: "La edad es inválida",
+    });
+}
+
+function respuestaCorrecta() {
+    Swal.fire({
+        icon: "success",
+        title: "Respuesta correcta",
+        text: "Acertaste! La edad de Messi es 37 años",
+    });
+}
+
 function mostrarRespuestas() {
     respuestas.innerHTML = '';
     const respuestasGuardadas = JSON.parse(localStorage.getItem('respuestas')) || [];
@@ -44,20 +78,25 @@ function mostrarRespuestas() {
         const div = document.createElement('div');
         div.innerHTML = `
             <div>
-                <p>Edad: ${res}</p>
-                <p>Puntos: ${puntos}</p>
+                <p>Edad: ${res}, Puntos: ${puntos}, Fecha: ${fechaHora} </p>
             </div>
         `;
         respuestas.appendChild(div);
     });
 }
 
-function contadorPuntos(edad) {
-    if (edad !== messi.edad) {  
-        puntos -= 10;
-        mensajeResultado.textContent = "La respuesta es incorrecta, perdiste 10 puntos"; 
-    }
-    else{
-        mensajeResultado.textContent = "La respuesta es correcta"; 
-    } 
+async function contadorPuntos(edad) {
+    return new Promise((resolve) => {
+        if (isNaN(edad) || edad < 0) {
+            edadInvalida();
+            resolve();
+        } else if (edad !== messi.edad) {
+            puntos -= 10;
+            respuestaIncorrecta();
+            resolve();
+        } else {
+            respuestaCorrecta();
+            resolve();
+        }
+    });
 }
